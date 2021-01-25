@@ -1,6 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+using System.Net;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Maersk.Sorting.Api.ExceptionHandler;
 
 namespace Maersk.Sorting.Api.Controllers
 {
@@ -9,10 +14,11 @@ namespace Maersk.Sorting.Api.Controllers
     public class SortController : ControllerBase
     {
         private readonly ISortJobProcessor _sortJobProcessor;
-
-        public SortController(ISortJobProcessor sortJobProcessor)
+        private IMemoryCache _cacheprovider;
+        public SortController(ISortJobProcessor sortJobProcessor, IMemoryCache cacheprovider)
         {
             _sortJobProcessor = sortJobProcessor;
+            _cacheprovider = cacheprovider;
         }
 
         [HttpPost("run")]
@@ -32,24 +38,44 @@ namespace Maersk.Sorting.Api.Controllers
         }
 
         [HttpPost]
-        public Task<ActionResult<SortJob>> EnqueueJob(int[] values)
+        public ActionResult<SortJob> EnqueueJob(int[] values)
         {
-            // TODO: Should enqueue a job to be processed in the background.
-            throw new NotImplementedException();
+            var pendingJob = new SortJob(
+             id: Guid.NewGuid(),
+             status: SortJobStatus.Pending,
+             duration: null,
+             input: values,
+             output: null);
+            List<SortJob> jobs;
+            if (!_cacheprovider.TryGetValue("SortJobCache", out jobs)) {            
+                jobs = new List<SortJob>();
+            }
+            jobs.Add(pendingJob);
+            _cacheprovider.Set("SortJobCache", jobs);
+            return Ok(pendingJob);
         }
 
         [HttpGet]
-        public Task<ActionResult<SortJob[]>> GetJobs()
-        {
-            // TODO: Should return all jobs that have been enqueued (both pending and completed).
-            throw new NotImplementedException();
+        public async Task<ActionResult<SortJob[]>> GetJobs()
+        {            
+            List<SortJob> jobs;           
+            if (_cacheprovider.TryGetValue("SortJobCache", out jobs))
+            {
+                return await Task.FromResult(jobs.ToArray());
+            }
+            return NotFound(new ApiResponse((int)HttpStatusCode.NotFound, "No Jobs found"));
         }
 
         [HttpGet("{jobId}")]
-        public Task<ActionResult<SortJob>> GetJob(Guid jobId)
+        public async Task<ActionResult<SortJob>> GetJob(Guid jobId)
         {
-            // TODO: Should return a specific job by ID.
-            throw new NotImplementedException();
+            SortJob job;
+            if (_cacheprovider.Get("SortJobCache") !=null)
+            {
+                job =  _cacheprovider.Get<IEnumerable<SortJob>>("SortJobCache").Where( x => x.Id == jobId).FirstOrDefault();
+                return await Task.FromResult(job);
+            }
+             return NotFound(new ApiResponse((int)HttpStatusCode.NotFound, "Job with provided id doesnot exist"));
         }
     }
 }

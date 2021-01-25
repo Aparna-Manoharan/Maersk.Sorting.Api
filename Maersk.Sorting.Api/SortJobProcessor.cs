@@ -26,6 +26,7 @@ namespace Maersk.Sorting.Api
             var duration = stopwatch.Elapsed;
 
             _logger.LogInformation("Completed processing job with ID '{JobId}'. Duration: '{Duration}'.", job.Id, duration);
+           
 
             return new SortJob(
                 id: job.Id,

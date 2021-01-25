@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Maersk.Sorting.Api
 {
-    public class SortJob
+    public class SortJob 
     {
         public SortJob(Guid id, SortJobStatus status, TimeSpan? duration, IReadOnlyCollection<int> input, IReadOnlyCollection<int>? output)
         {
@@ -15,7 +15,7 @@ namespace Maersk.Sorting.Api
         }
 
         public Guid Id { get; }
-        public SortJobStatus Status { get; }
+        public SortJobStatus Status { get;  }
         public TimeSpan? Duration { get; }
         public IReadOnlyCollection<int> Input { get; }
         public IReadOnlyCollection<int>? Output { get; }
